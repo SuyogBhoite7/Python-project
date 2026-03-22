@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>CardScan</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:wght@600&display=swap">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo-box">
+    <svg viewBox="0 0 24 24">
+      <path d="M4 6h16v12H4z" opacity=".35"/>
+      <rect x="4" y="4" width="16" height="16" rx="2" stroke="white" stroke-width="1.5" fill="none"/>
+      <line x1="8" y1="10" x2="16" y2="10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="8" y1="14" x2="13" y2="14" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <h1>CardScan</h1>
+  <span class="hbadge">EasyOCR · Free</span>
+</header>
+
+<main>
+
+  <!-- ══ LEFT: Scanner ══ -->
+  <div class="col">
+  <div class="panel">
+    <div class="phdr"><span class="dot"></span>Scan a Card</div>
+    <div class="pbody">
+
+      <!-- Upload area (visual only — drag-drop on desktop) -->
+      <div id="drop-zone">
+        <div class="up-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <p class="dz-title">Add your card image</p>
+        <p class="dz-sub">Tap Gallery or Camera below · or drag &amp; drop here</p>
+      </div>
+
+      <!--
+        ════════════════════════════════════════════════════════
+        MOBILE FILE INPUT STRATEGY
+        ────────────────────────────────────────────────────────
+        We use THREE separate <input> elements, each wrapped in
+        a visible <label>.  The label click activates the input
+        natively — NO JavaScript .click() is needed.
+
+        • #inp-gallery  — NO capture attr  → shows photo library
+        • #inp-camera   — capture="environment" → rear camera
+        • #inp-live     — button, opens getUserMedia stream
+
+        Inputs are sized 0x0 with opacity 0 but NOT display:none /
+        visibility:hidden — those block iOS Safari's file picker.
+        ════════════════════════════════════════════════════════
+      -->
+      <div class="btn-row">
+
+        <!-- GALLERY -->
+        <label class="pick-btn" for="inp-gallery">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>Gallery</span>
+        </label>
+        <input type="file"
+               id="inp-gallery"
+               accept="image/*"
+               style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;">
+
+        <!-- CAMERA (rear, direct) -->
+        <label class="pick-btn" for="inp-camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Camera</span>
+        </label>
+        <input type="file"
+               id="inp-camera"
+               accept="image/*"
+               capture="environment"
+               style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;">
+
+        <!-- LIVE STREAM -->
+        <button class="pick-btn" id="btn-live" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>Live</span>
+        </button>
+
+      </div><!-- /btn-row -->
+
+      <!-- Live camera view -->
+      <div id="live-wrap">
+        <video id="live-feed" autoplay playsinline muted></video>
+        <button id="btn-snap" type="button">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+               stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Capture photo
+        </button>
+      </div>
+
+      <!-- Preview of chosen image -->
+      <div id="prev-wrap">
+        <img id="prev-img" alt="card preview">
+        <button id="btn-clear" type="button">✕</button>
+      </div>
+
+      <!-- Scan trigger -->
+      <button id="btn-scan" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Scan Card
+      </button>
+
+      <!-- Progress -->
+      <div id="prog-box">
+        <div id="prog-lbl">Scanning…</div>
+        <div id="prog-track"><div id="prog-fill"></div></div>
+      </div>
+
+      <!-- Result -->
+      <div id="result-box">
+        <div class="res-hdr">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Extracted data — edit if needed
+        </div>
+        <div id="res-fields"></div>
+        <div class="res-acts">
+          <button class="btn-s primary" id="btn-save" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Card
+          </button>
+          <button class="btn-s" id="btn-contact" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+            </svg>
+            Save to Contacts
+          </button>
+          <button class="btn-s" id="btn-copy" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  </div><!-- /col -->
+
+  <!-- ══ RIGHT: Saved cards ══ -->
+  <div class="panel">
+    <div class="phdr">
+      <span class="dot"></span>Saved Cards
+      <span id="cnt-badge" class="cnt-badge">0</span>
+    </div>
+    <div class="pbody">
+      <div id="no-cards" class="no-cards">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        No cards yet.<br>Scan a card to get started.
+      </div>
+      <div id="cards-list"></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast-msg"></div>
+<canvas id="snap-cv" style="display:none"></canvas>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
